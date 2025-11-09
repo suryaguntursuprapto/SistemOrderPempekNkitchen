@@ -9,6 +9,7 @@ use App\Models\Message;
 use App\Models\Payment;
 use App\Models\PaymentMethod;
 use App\Services\MidtransService;
+use App\Services\AccountingService; 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -22,10 +23,12 @@ class CustomerController extends Controller
     use AuthorizesRequests, DispatchesJobs, ValidatesRequests;
 
     protected $midtransService;
+    protected $accountingService;
 
-    public function __construct(MidtransService $midtransService)
+    public function __construct(MidtransService $midtransService, AccountingService $accountingService)
     {
         $this->midtransService = $midtransService;
+        $this->accountingService = $accountingService;
         $this->middleware('auth');
         $this->middleware(function ($request, $next) {
             if (!auth()->user()->isCustomer()) {
@@ -547,6 +550,7 @@ class CustomerController extends Controller
     private function updatePaymentStatus($payment, $order, $status, $callbackData, $transactionId = null, $paymentType = null)
     {
         try {
+            $wasAlreadyConfirmed = $payment->status === 'confirmed';
             DB::transaction(function () use ($payment, $order, $status, $callbackData, $transactionId, $paymentType) {
                 // Update payment record
                 $paymentData = [
@@ -582,6 +586,13 @@ class CustomerController extends Controller
                     ]);
                 }
             });
+            // ===== SAMBUNGAN AKUNTANSI =====
+            // Jika status BARU adalah confirmed, DAN status LAMA BUKAN confirmed
+            // (Agar tidak dobel jurnal)
+            if ($status === 'confirmed' && !$wasAlreadyConfirmed) {
+                \Log::info("Memanggil AccountingService untuk Order: {$order->order_number}");
+                $this->accountingService->recordSale($order);
+            }
 
         } catch (\Exception $e) {
             \Log::error('Failed to update payment status', [

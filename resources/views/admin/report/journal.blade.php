@@ -1,0 +1,109 @@
+@extends('layouts.report')
+
+@section('report_content')
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-gray-900">Jurnal Umum</h1>
+        <p class="text-gray-600 mt-1">Daftar semua transaksi yang dicatat secara kronologis.</p>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
+        <form action="{{ route('admin.journal.index') }}" method="GET" class="flex flex-col md:flex-row md:items-end gap-4">
+            <div>
+                <label for="start_date" class="block text-sm font-medium text-gray-700">Tanggal Mulai</label>
+                <input type="date" name="start_date" id="start_date" 
+                       value="{{ $startDate }}" 
+                       class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+            </div>
+            <div>
+                <label for="end_date" class="block text-sm font-medium text-gray-700">Tanggal Selesai</label>
+                <input type="date" name="end_date" id="end_date" 
+                       value="{{ $endDate }}" 
+                       class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+            </div>
+            <button type="submit" 
+                    class="inline-flex items-center px-4 py-2 bg-orange-500 border border-transparent rounded-xl font-semibold text-xs text-white uppercase tracking-widest hover:bg-orange-600 active:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition ease-in-out duration-150">
+                Filter
+            </button>
+        </form>
+    </div>
+
+    <div class="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Tanggal
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Keterangan & Akun
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Ref.
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Debit
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Kredit
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    @forelse ($journals as $journal)
+                        <tr class="bg-gray-50/50">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                {{ \Carbon\Carbon::parse($journal->date)->format('d M Y') }}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-900 font-semibold" colspan="2">
+                                {{ $journal->description }}
+                            </td>
+                            <td class="px-6 py-4"></td>
+                            <td class="px-6 py-4"></td>
+                        </tr>
+                        
+                        @foreach ($journal->transactions as $tx)
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4"></td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 {{ $tx->credit > 0 ? 'pl-12' : '' }}">
+                                [{{ $tx->chartOfAccount->code }}] {{ $tx->chartOfAccount->name }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                @if ($journal->referenceable_type === 'App\Models\Order')
+                                    {{ $journal->referenceable->order_number ?? '' }}
+                                @else
+                                    -
+                                @endif
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 text-right">
+                                {{ $tx->debit > 0 ? 'Rp ' . number_format($tx->debit, 0, ',', '.') : '-' }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 text-right">
+                                {{ $tx->credit > 0 ? 'Rp ' . number_format($tx->credit, 0, ',', '.') : '-' }}
+                            </td>
+                        </tr>
+                        @endforeach
+                    @empty
+                        <tr>
+                            <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+                                <svg class="w-12 h-12 mx-auto text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path>
+                                </svg>
+                                <p class="mt-2 text-sm">Tidak ada data jurnal pada rentang tanggal ini.</p>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    @if ($journals->hasPages())
+        <div class="mt-6">
+            {!! $journals->links() !!}
+        </div>
+    @endif
+</div>
+@endsection

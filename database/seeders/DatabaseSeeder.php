@@ -13,11 +13,9 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+       $this->call(ChartOfAccountSeeder::class);
+       $this->call(MenuSeeder::class);
+       $this->call(UserSeeder::class);
+       $this->call(PaymentMethodSeeder::class);
     }
 }

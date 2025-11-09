@@ -62,6 +62,11 @@ class Order extends Model
         return self::getStatuses()[$this->status] ?? $this->status;
     }
 
+    public function journal()
+    {
+        return $this->morphOne(Journal::class, 'referenceable');
+    }
+
     public function getFormattedTotalAttribute()
     {
         return 'Rp ' . number_format($this->total_amount, 0, ',', '.');

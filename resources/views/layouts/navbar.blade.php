@@ -51,6 +51,13 @@
                         </svg>
                         Pesan
                     </a>
+                    <a href="{{ route('admin.report.index') }}" 
+                       class="flex items-center px-4 py-3 rounded-xl text-base font-medium {{ Request::routeIs('admin.report.*') || Request::routeIs('admin.journal.*') || Request::routeIs('admin.ledger.*') || Request::routeIs('admin.coa.*') ? 'bg-orange-100 text-orange-700' : 'text-gray-600 hover:text-orange-600 hover:bg-orange-50' }} transition-all duration-300">
+                        <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2h14a2 2 0 002-2z"></path>
+                        </svg>
+                        Laporan
+                    </a>
                 </div>
                 @else
                 <div class="hidden lg:flex space-x-1 ml-8">

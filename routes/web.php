@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\ChartOfAccountController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -40,6 +41,25 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::get('/message', [AdminController::class, 'messageIndex'])->name('message.index');
     Route::get('/message/{message}', [AdminController::class, 'messageShow'])->name('message.show');
     Route::post('/message/{message}/reply', [AdminController::class, 'messageReply'])->name('message.reply');
+
+    // Rute Laporan
+    Route::get('/reports', [AdminController::class, 'reportIndex'])->name('report.index');
+    Route::get('/reports/export', [AdminController::class, 'reportExport'])->name('report.export');
+
+    //Expense
+    Route::get('/expense', [AdminController::class, 'expenseIndex'])->name('expense.index');
+    Route::get('/expense/create', [AdminController::class, 'expenseCreate'])->name('expense.create');
+    Route::post('/expense', [AdminController::class, 'expenseStore'])->name('expense.store');
+    Route::delete('/expense/{expense}', [AdminController::class, 'expenseDestroy'])->name('expense.destroy');
+
+    // 1. Rute Jurnal Umum
+    Route::get('/journal', [AdminController::class, 'journalIndex'])->name('journal.index');
+    
+    // 2. Rute Buku Besar
+    Route::get('/ledger', [AdminController::class, 'ledgerIndex'])->name('ledger.index');
+
+    // Chart of account
+    Route::resource('/chart-of-accounts', ChartOfAccountController::class)->names('chart_of_accounts');
 });
 
 // Customer routes

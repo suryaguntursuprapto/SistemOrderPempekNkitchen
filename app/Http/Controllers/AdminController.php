@@ -6,14 +6,23 @@ use App\Models\Menu;
 use App\Models\Order;
 use App\Models\Message;
 use App\Models\User;
+use App\Models\Journal;
+use App\Models\ChartOfAccount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Routing\Controller;
+use App\Models\Expense; // <-- Dari langkah sebelumnya
+use App\Exports\FinancialReportExport; // <-- Dari langkah sebelumnya
+use Maatwebsite\Excel\Facades\Excel; // <-- Dari langkah sebelumnya
+use Carbon\Carbon; // <-- TAMBAHKAN BARIS INI
+use App\Services\AccountingService;
 
 class AdminController extends Controller
 {
-    public function __construct()
+    protected $accountingService;
+    public function __construct(AccountingService $accountingService)
     {
+        $this->accountingService = $accountingService;
         $this->middleware('auth');
         $this->middleware(function ($request, $next) {
             if (!auth()->user()->isAdmin()) {
@@ -172,5 +181,135 @@ class AdminController extends Controller
         ]);
 
         return redirect()->route('admin.message.index')->with('success', 'Pesan berhasil dibalas!');
+    }
+
+    public function expenseIndex()
+    {
+        $expenses = Expense::latest()->paginate(10);
+        return view('admin.expense.index', compact('expenses'));
+    }
+
+    public function expenseCreate()
+    {
+        return view('admin.expense.create');
+    }
+
+    public function expenseStore(Request $request)
+    {
+        $validated = $request->validate([
+            'description' => 'required|string|max:255',
+            'amount' => 'required|numeric|min:0',
+            'date' => 'required|date',
+            'category' => 'nullable|string',
+        ]);
+
+        $validated['user_id'] = auth()->id();
+
+        $expense = Expense::create($validated);
+
+        // ===== SAMBUNGAN AKUNTANSI =====
+        $this->accountingService->recordExpense($expense);
+        // ==================================
+
+        return redirect()->route('admin.expense.index')->with('success', 'Biaya berhasil dicatat.');
+    }
+
+    public function expenseDestroy(Expense $expense)
+    {
+        // TODO: Buat Jurnal Balik jika diperlukan
+        $expense->journal()->delete(); // Hapus jurnal terkait
+        $expense->delete();
+        
+        return redirect()->route('admin.expense.index')->with('success', 'Biaya berhasil dihapus.');
+    }
+
+    public function reportIndex(Request $request)
+    {
+        // Tetapkan tanggal default (bulan ini)
+        $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', Carbon::now()->endOfMonth()->toDateString());
+        
+        $startDateTime = $startDate . ' 00:00:00';
+        $endDateTime = $endDate . ' 23:59:59';
+
+        // 1. Data Penjualan (dari Order)
+        $salesData = Order::whereIn('status', ['delivered', 'confirmed', 'ready'])
+                            ->whereBetween('created_at', [$startDateTime, $endDateTime])
+                            ->orderBy('created_at', 'desc')
+                            ->get();
+        
+        // 2. Data Biaya/Pembelian (dari Expense)
+        $expenseData = Expense::whereBetween('date', [$startDate, $endDate])
+                              ->orderBy('date', 'desc')
+                              ->get();
+
+        // 3. Kalkulasi Laba/Rugi
+        $totalSales = $salesData->sum('total_amount');
+        $totalExpenses = $expenseData->sum('amount');
+        $profit = $totalSales - $totalExpenses;
+
+        $summary = [
+            'total_sales' => $totalSales,
+            'total_expenses' => $totalExpenses,
+            'profit' => $profit,
+        ];
+
+        return view('admin.report.index', compact(
+            'summary', 
+            'salesData', 
+            'expenseData', 
+            'startDate', 
+            'endDate'
+        ));
+    }
+
+    public function reportExport(Request $request)
+    {
+        $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', Carbon::now()->endOfMonth()->toDateString());
+        
+        $fileName = 'laporan_keuangan_' . $startDate . '_sd_' . $endDate . '.xlsx';
+
+        return Excel::download(new FinancialReportExport($startDate, $endDate), $fileName);
+    }
+
+    /**
+     * 📖 Menampilkan Jurnal Umum (Semua Transaksi)
+     */
+    public function journalIndex(Request $request)
+    {
+        $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', Carbon::now()->endOfMonth()->toDateString());
+        
+        $journals = Journal::with('transactions.chartOfAccount', 'referenceable')
+                            ->whereBetween('date', [$startDate, $endDate])
+                            ->latest()
+                            ->paginate(20);
+
+        return view('admin.report.journal', compact('journals', 'startDate', 'endDate'));
+    }
+
+    /**
+     * 📚 Menampilkan Buku Besar (Transaksi per Akun)
+     */
+    public function ledgerIndex(Request $request)
+    {
+        $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', Carbon::now()->endOfMonth()->toDateString());
+
+        // Ambil semua akun yang punya transaksi di rentang tanggal ini
+        $accounts = ChartOfAccount::whereHas('journalTransactions', function ($query) use ($startDate, $endDate) {
+            $query->whereHas('journal', function ($subQuery) use ($startDate, $endDate) {
+                $subQuery->whereBetween('date', [$startDate, $endDate]);
+            });
+        })
+        ->with(['journalTransactions' => function ($query) use ($startDate, $endDate) {
+            $query->whereHas('journal', function ($subQuery) use ($startDate, $endDate) {
+                $subQuery->whereBetween('date', [$startDate, $endDate]);
+            })->with('journal');
+        }])
+        ->get();
+
+        return view('admin.report.ledger', compact('accounts', 'startDate', 'endDate'));
     }
 }
