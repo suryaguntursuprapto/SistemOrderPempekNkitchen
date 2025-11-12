@@ -6,6 +6,7 @@ use App\Models\ChartOfAccount;
 use App\Models\Order;
 use App\Models\Expense;
 use App\Models\Journal;
+use App\Models\Purchase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -15,6 +16,8 @@ class AccountingService
     const KAS_ACCOUNT = '1101';
     const REVENUE_ACCOUNT = '4000';
     const EXPENSE_ACCOUNT = '5000'; // Default
+    const BAHAN_BAKU_ACCOUNT = '5001'; 
+    const HUTANG_USAHA_ACCOUNT = '2101'; 
     
     /**
      * Mencatat Jurnal Penjualan dari Order
@@ -76,20 +79,28 @@ class AccountingService
         try {
             // 1. Dapatkan ID Akun
             $kasAccount = ChartOfAccount::where('code', self::KAS_ACCOUNT)->firstOrFail();
-            $expenseAccount = ChartOfAccount::where('code', self::EXPENSE_ACCOUNT)->firstOrFail(); // Nanti bisa disesuaikan dgn kategori
+            
+            // 2. DAPATKAN AKUN BEBAN DARI OBJEK EXPENSE (BUKAN const)
+            // Ini adalah akun yang dipilih user di form, cth: "Beban Listrik", "Beban Ikan"
+            $expenseAccount = $expense->chartOfAccount; 
+            
+            if (!$expenseAccount) {
+                 throw new \Exception("Akun Beban tidak ditemukan untuk expense ID: {$expense->id}");
+            }
+            
             $amount = $expense->amount;
 
             DB::transaction(function () use ($expense, $kasAccount, $expenseAccount, $amount) {
-                // 2. Buat Kepala Jurnal
+                // 3. Buat Kepala Jurnal
                 $journal = $expense->journal()->create([
                     'date' => $expense->date->format('Y-m-d'),
                     'description' => $expense->description,
                 ]);
 
-                // 3. Buat Baris Jurnal
-                // (D) Beban
+                // 4. Buat Baris Jurnal
+                // (D) Beban (sesuai pilihan user)
                 $journal->transactions()->create([
-                    'chart_of_account_id' => $expenseAccount->id,
+                    'chart_of_account_id' => $expenseAccount->id, // <-- Ini sekarang dinamis
                     'debit' => $amount,
                     'credit' => 0,
                 ]);
@@ -106,6 +117,62 @@ class AccountingService
 
         } catch (\Exception $e) {
             Log::error("Gagal membuat jurnal biaya: " . $e->getMessage(), ['expense_id' => $expense->id]);
+        }
+    }
+    /**
+     * 🛒 Mencatat Jurnal Pembelian dari Purchase
+     */
+    public function recordPurchase(Purchase $purchase)
+    {
+        if ($purchase->journal()->exists()) {
+            Log::warning("Jurnal untuk Purchase {$purchase->id} sudah ada.");
+            return;
+        }
+
+        try {
+            // 1. Dapatkan ID Akun
+            $bebanBahanBaku = ChartOfAccount::where('code', self::BAHAN_BAKU_ACCOUNT)->firstOrFail();
+            $totalAmount = $purchase->total_amount;
+            
+            // 2. Tentukan Akun Kredit (Kas atau Hutang)
+            if ($purchase->status == 'paid') {
+                $creditAccount = ChartOfAccount::where('code', self::KAS_ACCOUNT)->firstOrFail();
+                $description = "Pembelian tunai " . ($purchase->invoice_number ?? $purchase->id);
+            } else {
+                $creditAccount = ChartOfAccount::where('code', self::HUTANG_USAHA_ACCOUNT)->firstOrFail();
+                $description = "Pembelian kredit " . ($purchase->invoice_number ?? $purchase->id);
+            }
+
+            DB::transaction(function () use ($purchase, $bebanBahanBaku, $creditAccount, $totalAmount, $description) {
+                // 3. Buat Kepala Jurnal
+                $journal = $purchase->journal()->create([
+                    'date' => $purchase->purchase_date->format('Y-m-d'),
+                    'description' => $description,
+                ]);
+
+                // 4. Buat Baris Jurnal
+                // (D) Beban Bahan Baku / Persediaan
+                $journal->transactions()->create([
+                    'chart_of_account_id' => $bebanBahanBaku->id,
+                    'debit' => $totalAmount,
+                    'credit' => 0,
+                ]);
+                
+                // (K) Kas / Hutang
+                $journal->transactions()->create([
+                    'chart_of_account_id' => $creditAccount->id,
+                    'debit' => 0,
+                    'credit' => $totalAmount,
+                ]);
+            });
+
+            Log::info("Jurnal Pembelian {$purchase->id} berhasil dibuat.");
+
+        } catch (\Exception $e) {
+            Log::error("Gagal membuat jurnal pembelian: " . $e->getMessage(), ['purchase_id' => $purchase->id]);
+            // Hapus purchase jika jurnal gagal dibuat? (Opsional)
+            // $purchase->delete();
+            throw new \Exception("Gagal membuat jurnal: " . $e->getMessage());
         }
     }
 }

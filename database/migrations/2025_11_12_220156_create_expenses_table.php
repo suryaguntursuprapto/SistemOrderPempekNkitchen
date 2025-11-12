@@ -6,21 +6,22 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    public function up(): void
+   public function up(): void
     {
         Schema::create('expenses', function (Blueprint $table) {
             $table->id();
             $table->string('description');
             $table->decimal('amount', 15, 2);
             $table->date('date');
-            $table->string('category')->nullable()->comment('Contoh: Bahan Baku, Operasional, Gaji');
-            $table->foreignId('user_id')->constrained()->onDelete('cascade'); // Admin yg input
+            
+            // HAPUS KOLOM 'category' (string) LAMA
+            // $table->string('category'); 
+            
+            // TAMBAHKAN KOLOM 'chart_of_account_id' (koneksi)
+            $table->foreignId('chart_of_account_id')->constrained()->onDelete('restrict');
+            
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->timestamps();
         });
-    }
-
-    public function down(): void
-    {
-        Schema::dropIfExists('expenses');
     }
 };

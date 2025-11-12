@@ -45,25 +45,26 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
                     <div>
                         <label for="type" class="block text-sm font-medium text-gray-700">Tipe Akun</label>
                         <select name="type" id="type" 
                                 class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
-                            <option value="Asset" {{ old('type', $chartOfAccount->type) == 'Asset' ? 'selected' : '' }}>Asset</option>
-                            <option value="Liability" {{ old('type', $chartOfAccount->type) == 'Liability' ? 'selected' : '' }}>Liability</option>
-                            <option value="Equity" {{ old('type', $chartOfAccount->type) == 'Equity' ? 'selected' : '' }}>Equity</option>
-                            <option value="Revenue" {{ old('type', $chartOfAccount->type) == 'Revenue' ? 'selected' : '' }}>Revenue</option>
-                            <option value="Expense" {{ old('type', $chartOfAccount->type) == 'Expense' ? 'selected' : '' }}>Expense</option>
-                        </select>
+                            </select>
                     </div>
                     <div>
                         <label for="normal_balance" class="block text-sm font-medium text-gray-700">Saldo Normal</label>
                         <select name="normal_balance" id="normal_balance" 
                                 class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
-                            <option value="Debit" {{ old('normal_balance', $chartOfAccount->normal_balance) == 'Debit' ? 'selected' : '' }}>Debit</option>
-                            <option value="Credit" {{ old('normal_balance', $chartOfAccount->normal_balance) == 'Credit' ? 'selected' : '' }}>Credit</option>
-                        </select>
+                            </select>
+                    </div>
+                    <div>
+                        <label for="opening_balance" class="block text-sm font-medium text-gray-700">Saldo Awal (Rp)</label>
+                        <input type="number" name="opening_balance" id="opening_balance" 
+                               class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500" 
+                               placeholder="0" 
+                               value="{{ old('opening_balance', $chartOfAccount->opening_balance) }}" 
+                               step="0.01">
                     </div>
                 </div>
 

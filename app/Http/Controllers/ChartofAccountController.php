@@ -13,8 +13,12 @@ class ChartOfAccountController extends Controller
      */
     public function index()
     {
-        // Ambil semua akun, urutkan dari yang terbaru, dan paginasi
-        $accounts = ChartOfAccount::latest()->paginate(10);
+        // Kita gunakan 'withSum' untuk mendapatkan total debit/kredit
+        // langsung dari database. Ini sangat efisien.
+        $accounts = ChartOfAccount::withSum('journalTransactions', 'debit')
+                            ->withSum('journalTransactions', 'credit')
+                            ->latest()
+                            ->paginate(20); // Anda bisa ganti jumlah paginasi
         
         // Kirim data ke view
         return view('admin.chart_of_accounts.index', compact('accounts'));
@@ -42,6 +46,7 @@ class ChartOfAccountController extends Controller
             'name' => 'required|string|max:255',
             'type' => ['required', Rule::in(['Asset', 'Liability', 'Equity', 'Revenue', 'Expense'])],
             'normal_balance' => ['required', Rule::in(['Debit', 'Credit'])],
+            'opening_balance' => 'nullable|numeric|min:0',
             'parent_id' => 'nullable|exists:chart_of_accounts,id',
             'description' => 'nullable|string',
         ]);
@@ -91,6 +96,7 @@ class ChartOfAccountController extends Controller
             'name' => 'required|string|max:255',
             'type' => ['required', Rule::in(['Asset', 'Liability', 'Equity', 'Revenue', 'Expense'])],
             'normal_balance' => ['required', Rule::in(['Debit', 'Credit'])],
+            'opening_balance' => 'nullable|numeric|min:0',
             'parent_id' => 'nullable|exists:chart_of_accounts,id',
             'description' => 'nullable|string',
         ]);

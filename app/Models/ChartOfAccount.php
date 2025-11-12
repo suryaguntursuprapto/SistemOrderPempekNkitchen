@@ -21,6 +21,7 @@ class ChartOfAccount extends Model
         'normal_balance',
         'parent_id',
         'description',
+        'opening_balance',
     ];
 
     /**

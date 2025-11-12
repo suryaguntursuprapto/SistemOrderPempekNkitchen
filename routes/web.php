@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\ChartOfAccountController;
+use App\Http\Controllers\PurchaseController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -45,6 +46,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
     // Rute Laporan
     Route::get('/reports', [AdminController::class, 'reportIndex'])->name('report.index');
     Route::get('/reports/export', [AdminController::class, 'reportExport'])->name('report.export');
+
+    // RUTE BARU: CRUD Pembelian
+    Route::resource('/purchases', PurchaseController::class)->names('purchases');
 
     //Expense
     Route::get('/expense', [AdminController::class, 'expenseIndex'])->name('expense.index');

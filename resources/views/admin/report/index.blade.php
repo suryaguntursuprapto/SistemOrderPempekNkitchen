@@ -1,7 +1,7 @@
 @extends('layouts.report')
 
 @section('report_content')
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
     <div class="mb-8">
         <h1 class="text-3xl font-bold text-gray-900">Laporan Keuangan</h1>
         <p class="text-gray-600">Analisis penjualan, biaya, dan laba/rugi.</p>
@@ -39,23 +39,32 @@
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div class="bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl shadow-lg p-6">
-            <p class="text-sm font-medium text-green-100 mb-1">Total Penjualan</p>
-            <p class="text-3xl font-bold">Rp {{ number_format($summary['total_sales'], 0, ',', '.') }}</p>
+        
+        <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+            <p class="text-sm font-medium text-gray-500 mb-1">Total Penjualan</p>
+            <p class="text-3xl font-bold text-green-600">
+                Rp {{ number_format($summary['total_sales'], 0, ',', '.') }}
+            </p>
         </div>
-        <div class="bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl shadow-lg p-6">
-            <p class="text-sm font-medium text-red-100 mb-1">Total Biaya/Pembelian</p>
-            <p class="text-3xl font-bold">Rp {{ number_format($summary['total_expenses'], 0, ',', '.') }}</p>
+
+        <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+            <p class="text-sm font-medium text-gray-500 mb-1">Total Biaya & Pembelian</p>
+            <p class="text-3xl font-bold text-red-600">
+                Rp {{ number_format($summary['total_expenses'], 0, ',', '.') }}
+            </p>
         </div>
-        <div class="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-xl shadow-lg p-6">
-            <p class="text-sm font-medium text-indigo-100 mb-1">
+        
+        <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+            <p class="text-sm font-medium text-gray-500 mb-1">
                 @if($summary['profit'] >= 0)
                     Laba Bersih
                 @else
                     Rugi Bersih
                 @endif
             </p>
-            <p class="text-3xl font-bold">Rp {{ number_format($summary['profit'], 0, ',', '.') }}</p>
+            <p class="text-3xl font-bold {{ $summary['profit'] >= 0 ? 'text-indigo-600' : 'text-red-600' }}">
+                Rp {{ number_format($summary['profit'], 0, ',', '.') }}
+            </p>
         </div>
     </div>
 
@@ -91,7 +100,7 @@
         </div>
 
         <div class="bg-white rounded-lg shadow-md overflow-hidden">
-            <h3 class="text-lg font-semibold text-gray-900 px-6 py-4 border-b border-gray-200">Detail Biaya/Pembelian</h3>
+            <h3 class="text-lg font-semibold text-gray-900 px-6 py-4 border-b border-gray-200">Detail Biaya & Pembelian</h3>
             <div class="p-6 max-h-96 overflow-y-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
@@ -103,22 +112,33 @@
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
-                        @forelse($expenseData as $expense)
+                        
+                        @forelse($combinedCosts as $item)
                             <tr>
-                                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{{ $expense->date->format('d M Y') }}</td>
-                                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{{ $expense->description }}</td>
-                                <td class="px-4 py-2 whitespace-nowrap text-sm"><span class="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">{{ $expense->category ?? 'Lainnya' }}</span></td>
-                                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 text-right font-medium">Rp {{ number_format($expense->amount, 0, ',', '.') }}</td>
+                                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{{ $item->date->format('d M Y') }}</td>
+                                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700">{{ Str::limit($item->description, 40) }}</td>
+                                <td class="px-4 py-2 whitespace-nowrap text-sm">
+                                    @if($item->type == 'expense')
+                                        <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                            {{ $item->category }}
+                                        </span>
+                                    @else
+                                        <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            {{ $item->category }}
+                                        </span>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 text-right font-medium">Rp {{ number_format($item->amount, 0, ',', '.') }}</td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="px-4 py-4 text-center text-gray-500">Tidak ada data biaya pada rentang tanggal ini.</td>
+                                <td colspan="4" class="px-4 py-4 text-center text-gray-500">Tidak ada data biaya atau pembelian pada rentang tanggal ini.</td>
                             </tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
         </div>
-    </div>
-</div>
+        </div>
+
 @endsection

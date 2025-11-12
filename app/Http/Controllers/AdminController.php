@@ -8,6 +8,7 @@ use App\Models\Message;
 use App\Models\User;
 use App\Models\Journal;
 use App\Models\ChartOfAccount;
+use App\Models\Purchase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Routing\Controller;
@@ -185,13 +186,19 @@ class AdminController extends Controller
 
     public function expenseIndex()
     {
-        $expenses = Expense::latest()->paginate(10);
+        // Data 'with' sekarang harus mengambil relasi 'chartOfAccount'
+        $expenses = Expense::with('chartOfAccount')->latest()->paginate(10);
         return view('admin.expense.index', compact('expenses'));
     }
 
     public function expenseCreate()
     {
-        return view('admin.expense.create');
+        // Ambil semua akun COA yang tipenya 'Expense'
+        $expenseAccounts = ChartOfAccount::where('type', 'Expense')
+                                         ->orderBy('name')
+                                         ->get();
+                                         
+        return view('admin.expense.create', compact('expenseAccounts'));
     }
 
     public function expenseStore(Request $request)
@@ -200,16 +207,18 @@ class AdminController extends Controller
             'description' => 'required|string|max:255',
             'amount' => 'required|numeric|min:0',
             'date' => 'required|date',
-            'category' => 'nullable|string',
+            
+            // Validasi baru, menggantikan 'category'
+            'chart_of_account_id' => 'required|exists:chart_of_accounts,id', 
         ]);
 
         $validated['user_id'] = auth()->id();
 
         $expense = Expense::create($validated);
 
-        // ===== SAMBUNGAN AKUNTANSI =====
+        // ===== SAMBUNGAN AKUNTANSI (Sudah benar) =====
         $this->accountingService->recordExpense($expense);
-        // ==================================
+        // ===========================================
 
         return redirect()->route('admin.expense.index')->with('success', 'Biaya berhasil dicatat.');
     }
@@ -238,26 +247,58 @@ class AdminController extends Controller
                             ->orderBy('created_at', 'desc')
                             ->get();
         
-        // 2. Data Biaya/Pembelian (dari Expense)
-        $expenseData = Expense::whereBetween('date', [$startDate, $endDate])
-                              ->orderBy('date', 'desc')
-                              ->get();
+        // 2. Data Biaya/Pembelian (INI BAGIAN YANG DIPERBARUI)
+        
+        // Ambil data Biaya (Expense)
+        $expenseData = Expense::whereBetween('date', [$startDate, $endDate])->get();
+
+        // Ambil data Pembelian (Purchase)
+        $purchaseData = Purchase::whereBetween('purchase_date', [$startDate, $endDate])->get();
 
         // 3. Kalkulasi Laba/Rugi
         $totalSales = $salesData->sum('total_amount');
         $totalExpenses = $expenseData->sum('amount');
-        $profit = $totalSales - $totalExpenses;
+        $totalPurchases = $purchaseData->sum('total_amount'); // <-- BARU
+        
+        $profit = $totalSales - ($totalExpenses + $totalPurchases); // <-- DIPERBARUI
 
         $summary = [
             'total_sales' => $totalSales,
-            'total_expenses' => $totalExpenses,
+            'total_expenses' => $totalExpenses + $totalPurchases, // <-- DIPERBARUI
             'profit' => $profit,
         ];
+
+        // 4. GABUNGKAN DATA BIAYA & PEMBELIAN UNTUK TABEL
+        
+        // Ubah format Biaya
+        $expenses = $expenseData->map(function ($item) {
+            return (object) [
+                'date' => $item->date,
+                'description' => $item->description,
+                'category' => $item->category ?? 'Biaya Operasional',
+                'amount' => $item->amount,
+                'type' => 'expense' // Tandai sebagai 'expense'
+            ];
+        });
+
+        // Ubah format Pembelian
+        $purchases = $purchaseData->map(function ($item) {
+            return (object) [
+                'date' => $item->purchase_date,
+                'description' => 'Pembelian: ' . ($item->supplier_name ?? $item->invoice_number ?? 'ID ' . $item->id),
+                'category' => 'Pembelian Bahan Baku',
+                'amount' => $item->total_amount,
+                'type' => 'purchase' // Tandai sebagai 'purchase'
+            ];
+        });
+
+        // Gabungkan dan urutkan berdasarkan tanggal
+        $combinedCosts = collect($expenses)->merge($purchases)->sortBy('date');
 
         return view('admin.report.index', compact(
             'summary', 
             'salesData', 
-            'expenseData', 
+            'combinedCosts', // <-- KIRIM DATA GABUNGAN (BUKAN expenseData)
             'startDate', 
             'endDate'
         ));

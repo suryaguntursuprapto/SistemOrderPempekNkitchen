@@ -44,6 +44,9 @@
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Saldo Normal
                         </th>
+                       <th scope="col" class="px-6 py-3 text-right ...">
+                            Saldo Saat Ini
+                        </th>
                         <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Aksi
                         </th>
@@ -67,6 +70,26 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                                 {{ $account->normal_balance }}
+                            </td>
+                           <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-semibold">
+                                @php
+                                    // Ambil Saldo Awal
+                                    $balance = $account->opening_balance;
+                                    
+                                    // Ambil total debit/kredit dari controller (hasil withSum)
+                                    $total_debits = $account->journal_transactions_sum_debit ?? 0;
+                                    $total_credits = $account->journal_transactions_sum_credit ?? 0;
+
+                                    // Hitung saldo akhir berdasarkan Saldo Normal akun
+                                    if ($account->normal_balance == 'Debit') {
+                                        $current_balance = $balance + $total_debits - $total_credits;
+                                    } else {
+                                        // Asumsi Saldo Normal 'Credit'
+                                        $current_balance = $balance - $total_debits + $total_credits;
+                                    }
+                                @endphp
+                                
+                                Rp {{ number_format($current_balance, 0, ',', '.') }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium">
                                 <form action="{{ route('admin.chart_of_accounts.destroy', $account->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus ini?');" class="inline-flex gap-4">

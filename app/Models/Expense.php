@@ -13,8 +13,8 @@ class Expense extends Model
         'description',
         'amount',
         'date',
-        'category',
         'user_id',
+        'chart_of_account_id', // <-- UBAH INI (dari 'category')
     ];
 
     protected $casts = [
@@ -27,6 +27,17 @@ class Expense extends Model
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * Relasi ke Chart of Account (PENGGANTI 'category')
+     */
+    public function chartOfAccount()
+    {
+        return $this->belongsTo(ChartOfAccount::class);
+    }
+    
+    /**
+     * Relasi ke Jurnal (jika sudah ada)
+     */
     public function journal()
     {
         return $this->morphOne(Journal::class, 'referenceable');

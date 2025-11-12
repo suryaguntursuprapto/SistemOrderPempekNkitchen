@@ -1,6 +1,6 @@
-@extends('layouts.app')
+@extends('layouts.report')
 
-@section('content')
+@section('report_content')
 <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
     <div class="flex justify-between items-center mb-6">
@@ -52,11 +52,16 @@
                 </div>
 
                 <div class="mt-6">
-                    <label for="category" class="block text-sm font-medium text-gray-700">Kategori (Opsional)</label>
-                    <input type="text" name="category" id="category" 
-                           value="{{ old('category') }}"
-                           placeholder="Operasional Dapur"
+                    <label for="chart_of_account_id" class="block text-sm font-medium text-gray-700">Kategori Akun Biaya</label>
+                    <select name="chart_of_account_id" id="chart_of_account_id"
                            class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
+                        <option value="">-- Pilih Akun Biaya --</option>
+                        @foreach ($expenseAccounts as $account)
+                        <option value="{{ $account->id }}" {{ old('chart_of_account_id') == $account->id ? 'selected' : '' }}>
+                            [{{ $account->code }}] {{ $account->name }}
+                        </option>
+                        @endforeach
+                    </select>
                 </div>
             </div>
             
