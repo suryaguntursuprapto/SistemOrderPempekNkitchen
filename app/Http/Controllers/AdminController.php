@@ -156,11 +156,85 @@ class AdminController extends Controller
         return redirect()->route('admin.order.index')->with('success', 'Pesanan berhasil dihapus!');
     }
 
-    // Message Management
-    public function messageIndex()
+  public function messageIndex()
     {
-        $messages = Message::with('user')->latest()->paginate(10);
-        return view('admin.message.index', compact('messages'));
+        // Ambil SEMUA user dengan role customer, bukan cuma yang punya pesan
+        $customers = User::where('role', 'customer')
+            ->with(['messages' => function($q) {
+                $q->latest();
+            }])
+            ->withCount(['messages as unread_count' => function ($q) {
+                $q->where('is_read', false);
+            }])
+            ->get()
+            // Urutkan: Yang punya pesan terbaru di atas, sisanya berdasarkan tanggal daftar
+            ->sortByDesc(function($user) {
+                // Jika ada pesan, pakai tanggal pesan terakhir.
+                // Jika TIDAK ADA pesan, pakai tanggal user mendaftar.
+                // Kita gunakan helper optional() agar tidak error jika null.
+                return optional($user->messages->first())->created_at ?? $user->created_at;
+            });
+
+        return view('admin.message.index', compact('customers'));
+    }
+
+    public function getCustomerChat(User $user)
+    {
+        // Tandai semua pesan user ini sebagai terbaca
+        $user->messages()->where('is_read', false)->update(['is_read' => true]);
+
+        $messages = $user->messages()->orderBy('created_at', 'asc')->get();
+        
+        return response()->json([
+            'html' => view('admin.message.partials.chat-bubble', compact('messages'))->render(),
+            'user' => $user
+        ]);
+    }
+
+    public function sendChatReply(Request $request)
+    {
+        $request->validate([
+            'user_id' => 'required',
+            'message' => 'required',
+        ]);
+
+        // Cek apakah ada pesan terakhir dari user yang belum dibalas
+        $lastMessage = Message::where('user_id', $request->user_id)
+                              ->whereNull('admin_reply')
+                              ->latest()
+                              ->first();
+
+        if ($lastMessage) {
+            // Skenario 1: Membalas pesan user yang ada
+            $lastMessage->update([
+                'admin_reply' => $request->message,
+                'replied_at' => now(),
+                'is_read' => true
+            ]);
+        } else {
+            // Skenario 2: Admin chat duluan / Chat baru
+            // Kita buat "Dummy Message" agar struktur DB tetap valid
+            Message::create([
+                'user_id' => $request->user_id,
+                'subject' => 'Chat Admin',
+                'message' => '[SYSTEM_INIT]', // Kode khusus untuk disembunyikan di View
+                'admin_reply' => $request->message,
+                'replied_at' => now(),
+                'is_read' => true
+            ]);
+        }
+
+        return response()->json(['status' => 'success']);
+    }
+
+    // ... method lainnya ...
+
+    public function clearChat(User $user)
+    {
+        // Hapus semua pesan milik user ini
+        $user->messages()->delete();
+
+        return response()->json(['status' => 'success', 'message' => 'Riwayat chat berhasil dihapus.']);
     }
 
     public function messageShow(Message $message)

@@ -46,16 +46,25 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
                     <div>
-                        <label for="type" class.="block text-sm font-medium text-gray-700">Tipe Akun</label>
+                        <label for="type" class="block text-sm font-medium text-gray-700">Tipe Akun</label>
                         <select name="type" id="type" 
                                 class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
-                            </select>
+                            <option value="">-- Pilih Tipe --</option>
+                            <option value="Asset" {{ old('type') == 'Asset' ? 'selected' : '' }}>Asset (Harta)</option>
+                            <option value="Liability" {{ old('type') == 'Liability' ? 'selected' : '' }}>Liability (Kewajiban)</option>
+                            <option value="Equity" {{ old('type') == 'Equity' ? 'selected' : '' }}>Equity (Ekuitas/Modal)</option>
+                            <option value="Revenue" {{ old('type') == 'Revenue' ? 'selected' : '' }}>Revenue (Pendapatan)</option>
+                            <option value="Expense" {{ old('type') == 'Expense' ? 'selected' : '' }}>Expense (Beban)</option>
+                        </select>
                     </div>
                     <div>
                         <label for="normal_balance" class="block text-sm font-medium text-gray-700">Saldo Normal</label>
                         <select name="normal_balance" id="normal_balance" 
                                 class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500">
-                            </select>
+                            <option value="">-- Pilih Saldo --</option>
+                            <option value="Debit" {{ old('normal_balance') == 'Debit' ? 'selected' : '' }}>Debit</option>
+                            <option value="Credit" {{ old('normal_balance') == 'Credit' ? 'selected' : '' }}>Credit</option>
+                        </select>
                     </div>
                     <div>
                         <label for="opening_balance" class="block text-sm font-medium text-gray-700">Saldo Awal (Rp)</label>

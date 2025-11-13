@@ -900,7 +900,14 @@ class CustomerController extends Controller
 
     public function messageIndex()
     {
-        $messages = auth()->user()->messages()->latest()->paginate(10);
+        // Ambil semua percakapan
+        $messages = auth()->user()->messages()
+                            ->orderBy('created_at', 'asc')
+                            ->get();
+        
+        // Tandai semua sebagai sudah dibaca oleh customer
+        auth()->user()->messages()->where('is_read', false)->update(['is_read' => true]);
+
         return view('customer.message.index', compact('messages'));
     }
 
@@ -912,13 +919,44 @@ class CustomerController extends Controller
     public function messageStore(Request $request)
     {
         $validated = $request->validate([
-            'subject' => 'required|string|max:255',
-            'message' => 'required|string',
+            'message' => 'required|string|max:1000',
         ]);
 
-        auth()->user()->messages()->create($validated);
+        // Simpan pesan
+        $msg = auth()->user()->messages()->create([
+            'subject' => 'Chat Pelanggan', // Hardcode karena tidak dipakai di UI baru
+            'message' => $validated['message'],
+            'is_read' => false,
+        ]);
 
-        return redirect()->route('customer.message.index')->with('success', 'Pesan berhasil dikirim!');
+        // GANTI INI: Jangan redirect, tapi kembalikan JSON sukses
+        // return redirect()->route('customer.message.index'); <--- HAPUS INI
+        
+        return response()->json(['status' => 'success', 'data' => $msg]); // <--- GANTI JADI INI
+    }
+
+    // ... method lainnya ...
+
+    public function clearChat()
+    {
+        // Hapus semua pesan milik user yang sedang login
+        auth()->user()->messages()->delete();
+
+        return response()->json(['status' => 'success', 'message' => 'Riwayat chat berhasil dihapus.']);
+    }
+
+    public function messageJson()
+    {
+        $messages = auth()->user()->messages()
+                            ->orderBy('created_at', 'asc')
+                            ->get();
+        
+        // Tandai sebagai sudah dibaca
+        auth()->user()->messages()->where('is_read', false)->update(['is_read' => true]);
+        
+        return response()->json([
+            'html' => view('customer.message.partials.chat-bubble', compact('messages'))->render()
+        ]);
     }
 
     public function messageShow(Message $message)
